@@ -1,0 +1,74 @@
+
+name: Minigame Hub APK Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get source
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Prepare HTML app
+        run: |
+          mkdir -p app/www
+          cp minigame-hub.html app/www/index.html
+
+      - name: Install Capacitor
+        working-directory: app
+        run: |
+          npm init -y
+          npm install @capacitor/core@6.2.1 @capacitor/android@6.2.1 @capacitor/cli@6.2.1
+
+      - name: Configure Capacitor
+        working-directory: app
+        run: |
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.siw an21418.minigamehub",
+            "appName": "미니게임 광장",
+            "webDir": "www"
+          }
+          EOF
+          sed -i 's/com.siw an21418/com.siwan21418/' capacitor.config.json
+
+      - name: Create Android project
+        working-directory: app
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Build APK
+        working-directory: app/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Minigame-Hub-APK
+          path: app/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
